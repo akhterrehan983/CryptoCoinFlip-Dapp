@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Coin Flip Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.6.1/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.62.0/dist/solana-web3.min.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@1.62.0/lib/index.iife.js"></script>
+    <style>
+        body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: url('https://t3.ftcdn.net/jpg/09/04/74/10/240_F_904741059_MQ99U325m10TgS8mfirgSxLgNwGOB5xM.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, #ff512f, #dd2476);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 40px;
+            margin: 20px 0;
+            color: #f3f4f7;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .connect-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .connect-button {
+            background-color: #ff512f;
+            color: white;
+            padding: 15px 35px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .connect-button:hover {
+            background-color: #dd2476;
+            transform: scale(1.05);
+        }
+
+        .blockchain-select,
+        .amount-input,
+        .side-select {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            background-color: #f3f4f7;
+            color: #333;
+            border: 1px solid #ddd;
+            transition: border-color 0.3s ease;
+        }
+
+        .blockchain-select:focus,
+        .amount-input:focus,
+        .side-select:focus {
+            border-color: #ff512f;
+            outline: none;
+        }
+
+        .wallet-info {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .balance-card {
+            margin-top: 20px;
+            background-color: rgba(50, 50, 50, 0.8);
+            padding: 25px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .token-icon {
+            width: 50px;
+            vertical-align: middle;
+            margin-right: 15px;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 8px solid #ff512f;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .connected-wallet-info {
+            text-align: center;
+            margin-top: 20px;
+            color: #f3f4f7;
+            display: none;
+        }
+
+        footer {
+            position: absolute;
+            bottom: 20px;
+            text-align: center;
+        }
+
+        .social-links {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">CRYPTO COIN FLIP</div>
+        <h1>Connect Your Wallet & Play</h1>
+    </header>
+
+    <main>
+        <div class="connect-section">
+            <button id="connect-wallet" class="connect-button">Connect Wallet</button>
+            <select id="blockchain-select" class="blockchain-select">
+                <option value="solana">Solana</option>
+                <option value="ethereum">Ethereum</option>
+                <option value="polygon">Polygon</option>
+            </select>
+        </div>
+
+        <div id="wallet-info" class="wallet-info">
+            <div class="balance-card">
+                <img id="token-icon" src="solana-icon.png" alt="Token Icon" class="token-icon">
+                <p>Balance: <span id="token-balance">0.00</span></p>
+                <input type="number" id="bet-amount" class="amount-input" placeholder="Enter amount to bet" />
+                <select id="side-select" class="side-select">
+                    <option value="heads">Heads</option>
+                    <option value="tails">Tails</option>
+                </select>
+                <button id="flip-coin" class="connect-button">Flip Coin</button>
+                <p id="result-message"></p>
+            </div>
+        </div>
+
+        <div id="loader" class="loader"></div>
+        <div id="connected-wallet-info" class="connected-wallet-info"></div>
+    </main>
+
+    <footer>
+        <p>Powered by Vercel</p>
+        <div class="social-links">
+            <!-- Add social media icons here if needed -->
+        </div>
+    </footer>
+
+    <script>
+        let selectedBlockchain, web3, solanaConnection, selectedSide, betAmount;
+
+        document.getElementById('connect-wallet').addEventListener('click', async () => {
+            selectedBlockchain = document.getElementById('blockchain-select').value;
+            document.getElementById('loader').style.display = 'block';
+
+            if (selectedBlockchain === 'ethereum' || selectedBlockchain === 'polygon') {
+                if (window.ethereum) {
+                    web3 = new Web3(window.ethereum);
+                    try {
+                        await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        const accounts = await web3.eth.getAccounts();
+                        const balance = await web3.eth.getBalance(accounts[0]);
+
+                        let tokenName = 'ETH';
+                        if (selectedBlockchain === 'polygon') {
+                            web3.setProvider('https://polygon-rpc.com'); // Polygon RPC URL
+                            tokenName = 'MATIC';
+                        }
+
+                        document.getElementById('wallet-info').style.display = 'block';
+                        document.getElementById('connected-wallet-info').style.display = 'block';
+                        document.getElementById('connected-wallet-info').innerText = `Connected to ${selectedBlockchain.charAt(0).toUpperCase() + selectedBlockchain.slice(1)}`;
+                        document.getElementById('token-balance').innerText = `${web3.utils.fromWei(balance, 'ether')} ${tokenName}`;
+                    } catch (error) {
+                        console.error('Ethereum/Polygon connection error:', error);
+                    } finally {
+                        document.getElementById('loader').style.display = 'none';
+                    }
+                } else {
+                    alert('Please install MetaMask!');
+                    document.getElementById('loader').style.display = 'none';
+                }
+            } else if (selectedBlockchain === 'solana') {
+                if (window.solana && window.solana.isPhantom) {
+                    try {
+                        await window.solana.connect();
+                        solanaConnection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                        const publicKey = new solanaWeb3.PublicKey(window.solana.publicKey.toString());
+                        const balance = await solanaConnection.getBalance(publicKey);
+                        document.getElementById('wallet-info').style.display = 'block';
+                        document.getElementById('connected-wallet-info').style.display = 'block';
+                        document.getElementById('connected-wallet-info').innerText = 'Connected to Solana';
+                        document.getElementById('token-balance').innerText = `${balance / solanaWeb3.LAMPORTS_PER_SOL} SOL`;
+                    } catch (error) {
+                        console.error('Solana connection error:', error);
+                    } finally {
+                        document.getElementById('loader').style.display = 'none';
+                    }
+                } else {
+                    alert('Please install Phantom Wallet!');
+                    document.getElementById('loader').style.display = 'none';
+                }
+            } else if (selectedBlockchain === 'bitcoin') {
+                alert('Bitcoin integration is coming soon!');
+                document.getElementById('loader').style.display = 'none';
+            }
+        });
+
+        document.getElementById('flip-coin').addEventListener('click', () => {
+            betAmount = parseFloat(document.getElementById('bet-amount').value);
+            selectedSide = document.getElementById('side-select').value;
+
+            if (isNaN(betAmount) || betAmount <= 0) {
+                alert('Please enter a valid bet amount.');
+                return;
+            }
+
+            const result = Math.random() < 0.5 ? 'heads' : 'tails';
+            if (result === selectedSide) {
+                document.getElementById('result-message').innerText = `You won! You receive ${betAmount * 2} ${selectedBlockchain.toUpperCase()}!`;
+            } else {
+                document.getElementById('result-message').innerText = 'You lost! Better luck next time!';
+            }
+        });
+    </script>
+</body>
+
+</html>
